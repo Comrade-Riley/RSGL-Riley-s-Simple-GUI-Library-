@@ -14,11 +14,14 @@ self install:
 
 make:
 
-1. if this is your first time installing RSGL on your computer do
+  1. if this is your first time installing RSGL on your computer do
+
 make install
 
 2. if you already have RSGL on your computer and you're trying to update it do
+
 make update 
 
 3. if you want to delete with make do
+
 make remove
