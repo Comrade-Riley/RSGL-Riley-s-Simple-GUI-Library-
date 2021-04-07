@@ -3,6 +3,8 @@ A simple GUI library currently only for C++
 
 (This library currently only supports linux)
 
+discord server: https://discord.gg/Azafz3n8
+
 # Linux
   how to install?:
     1. Download the library
