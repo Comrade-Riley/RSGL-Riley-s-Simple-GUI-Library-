@@ -153,8 +153,8 @@ void Event::CheckEvents(){
   XNextEvent(RSGL::display, &E);
   type = E.type;
   if (type == 33 && E.xclient.data.l[0] == XInternAtom(RSGL::display, "WM_DELETE_WINDOW", True)){RSGL::quit = 33;}
+  else{RSGL::quit == 0;} 
   if (type == 4 || type == 5){button = E.xbutton.button;}
   if (type == 4 || type == 5 || type == 6){x=E.xbutton.x;y=E.xbutton.y;}
   if (type == 2 || type == 3){XQueryKeymap(RSGL::display,RSGL::keyboard);}
-  else{RSGL::quit == 0;} 
 }
