@@ -14,7 +14,7 @@ all:
 install:
 	mv ../RSGL-Riley-s-Simple-GUI-Library--$(VERSION) /usr/include/RSGL
 update:
-	rm /usr/include/RSGL
+	rm -r /usr/include/RSGL
 	mv ../RSGL-Riley-s-Simple-GUI-Library--$(VERSION) /usr/include/RSGL
 remove:
-	rm /usr/include/RSGL
+	rm -r /usr/include/RSGL
