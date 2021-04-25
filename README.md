@@ -1,5 +1,5 @@
 # RSGL-Riley-s-Simple-GUI-Library-
-A simple GUI library currently only for C++ 
+A simple GUI library currently only for Linux 
 
 (This library currently only supports linux)
 
