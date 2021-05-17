@@ -58,8 +58,8 @@ namespace RSGL{
     int LASTEvent=36;*/
 
     struct point{int x, y;};
-    struct rect{int length,width; int x, y;};
-    struct circle{int radius; int x, y;};
+    struct rect{int x, y; int length,width;};
+    struct circle{int x, y; int radius;};
     struct color{int r,g,b;};
     
     bool isPressed(unsigned long key);
