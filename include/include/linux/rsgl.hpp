@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "deps/stb_image_write.h" 
+#include "deps/png++/image.hpp" 
 
 #define STB_TRUETYPE_IMPLEMENTATION 
 #include "deps/stb_truetype.h"
@@ -25,6 +26,7 @@ namespace RSGL{
     Window window;
     int screenNumber;
     int init();
+
     int Quit();
 
     void GetError();
@@ -70,14 +72,14 @@ namespace RSGL{
     int SelectionNotify=31;
     int ColormapNotify=32;
     */
-    int quit;
+    int quit = 33;
     /*int MappingNotify=34;
     int GenericEvent=35;
     int LASTEvent=36;*/
 
     struct point{int x, y;};
-    struct rect{int length,width; int x, y;};
-    struct circle{int radius; int x, y;};
+    struct rect{int x, y; int length,width; };
+    struct circle{int x, y; int radius;};
     struct color{int r,g,b;};
 
     struct image{
@@ -85,10 +87,11 @@ namespace RSGL{
       std::vector<std::vector<int>> cords;
       std::vector<std::vector<int>> pixels;
       XImage* image;
-      CImg<unsigned char> img;
+      png::image< png::rgba_pixel> img;
       Pixmap pixmap;
       GC gc;
       RSGL::rect srcr = r; 
+      bool loaded = false;
     };
 
     struct text{
@@ -101,6 +104,10 @@ namespace RSGL{
       GC gc;
       RSGL::rect srcr = r; 
       RSGL::color c;
+      RSGL::color sc;
+      const char* text;
+      const char* stext;
+      bool loaded = false;
     };
     
     int clear(RSGL::rect r = {0,0,0,0}); //clears everything and redraws things defined below it
@@ -117,9 +124,9 @@ namespace RSGL{
     int ImageCollideImage(RSGL::image img, RSGL::image img2);
     
     
-    struct music{Mix_Music* loaded;};
+    struct music{Mix_Music* loaded; bool isLoaded=false;};
 
-    music loadMusic(const char* file){return {Mix_LoadMUS(file)};}
+    music loadMusic(const char* file){return {Mix_LoadMUS(file),true};}
 
     image loadImage(const char* file, RSGL::rect r);
 
@@ -195,7 +202,6 @@ RSGL::text RSGL::loadText(const char* word, RSGL::rect r, const char* font, RSGL
 
     /* create a bitmap for the phrase */
     unsigned char* bitmap = (unsigned char*)calloc(b_w * b_h, sizeof(unsigned char));
-    
     /* calculate font scaling */
     float scale = stbtt_ScaleForPixelHeight(&info, l_h);
     
@@ -221,12 +227,7 @@ RSGL::text RSGL::loadText(const char* word, RSGL::rect r, const char* font, RSGL
         
         /* compute y (different characters have different heights */
         int y = ascent + c_y1;
-        
-        /* render character (stride and offset is important here) */
-        int byteOffset = x + roundf(lsb * scale) + (y * b_w);
-        stbtt_MakeCodepointBitmap(&info, bitmap + byteOffset, c_x2 - c_x1, c_y2 - c_y1, b_w, scale, scale, word[i]);
-
-        stbtt_MakeCodepointBitmap(&info, bitmap + byteOffset, c_x2 - c_x1, c_y2 - c_y1, b_w, scale, scale, word[i]);
+        //imagebitmap + byteOffset, c_x2 - c_x1, c_y2 - c_y1, b_w, scale, scale, word[i]);
 
         /* advance x */
         x += roundf(ax * scale);
@@ -244,7 +245,7 @@ RSGL::text RSGL::loadText(const char* word, RSGL::rect r, const char* font, RSGL
     image = image.resize(r.length,r.width,1,3);
     for (int h=0; h < image.height(); h++){
       for (int w=0; w < image.width(); w++){
-        if ((int)image(w,h,0,0) == 255){
+        if ((int)image(w,h,0,0)+(int)image(w,h,0,1)+(int)image(w,h,0,2) > 0){
           cords.insert(cords.end(),{w,h});
           pixels.insert(pixels.end(),{(int)image(w,h,0,0), (int)image(w,h,0,1), (int)image(w,h,0,2)});
         }
@@ -256,24 +257,26 @@ RSGL::text RSGL::loadText(const char* word, RSGL::rect r, const char* font, RSGL
 	  gcv.background = XBlackPixel(RSGL::display,RSGL::screenNumber);
 	  gcv.graphics_exposures = 0;
     Pixmap pixmap = XCreatePixmap(RSGL::display,RSGL::window,r.width,r.length, DefaultDepth(RSGL::display, RSGL::screenNumber));
-    GC gc = XCreateGC(RSGL::display, pixmap, valuemask,&gcv);
+    GC gc = XCreateGC(RSGL::display, pixmap,valuemask,&gcv);
     XImage* img = XGetImage(RSGL::display, RSGL::window, 0, 0 , r.length, r.width, AllPlanes, ZPixmap);
-    for (int i=0;i < pixels.size(); i++){
+    for (int i=0;i < cords.size(); i++){
       XPutPixel(img,cords[i][0],cords[i][1],(65536 * c.r) + (256 * c.g) + c.b);           
     }
     XPutImage(RSGL::display, pixmap, gc, img, 0, 0, 0, 0, r.width, r.length);
-    return {r,cords,pixels, img, image,pixmap,gc,r,c};
+    
+    return {r,cords,pixels, img, image,pixmap,gc,r,c,c,word,word,true};
 }
 
-RSGL::image RSGL::loadImage(const char* file, RSGL::rect r){
+RSGL::image RSGL::loadImage(const char* file, RSGL::rect r){  
   std::vector<std::vector<int>> cords;
   std::vector<std::vector<int>> pixels;
-  CImg<unsigned char> image(file), visu(500,400,1,3,0);
-  image = image.resize(r.length,r.width,1,3);
-  for (int h=0; h < image.height(); h++){
-    for (int w=0; w < image.width(); w++){
-        cords.insert(cords.end(),{w,h});
-        pixels.insert(pixels.end(),{(int)image(w,h,0,0), (int)image(w,h,0,1), (int)image(w,h,0,2)});
+  png::image< png::rgba_pixel > image(file);
+  for (png::uint_16 h=0; h < image.get_height(); h++){
+    for (png::uint_16 w=0; w < image.get_width(); w++){
+        if(image[h][w].alpha > 0){
+          cords.insert(cords.end(),{(int)w,(int)h});
+          pixels.insert(pixels.end(),{(int)image[h][w].red, (int)image[h][w].green, (int)image[h][w].blue});
+        }
     }
   }
   XImage* img = XGetImage(RSGL::display, RSGL::window, 0, 0 , r.length, r.width, AllPlanes, ZPixmap);
@@ -288,7 +291,7 @@ RSGL::image RSGL::loadImage(const char* file, RSGL::rect r){
 	gcv.graphics_exposures = 0;
   GC gc = XCreateGC(RSGL::display, pixmap, valuemask,&gcv);
   XPutImage(RSGL::display, pixmap, gc, img, 0, 0, 0,0, r.width,r.length);
-  return {r,cords,pixels, img, image,pixmap,gc};
+  return {r,cords,pixels, img, image,pixmap,gc,true};
 }
 
 int RSGL::drawImage(RSGL::image image){
@@ -296,7 +299,7 @@ int RSGL::drawImage(RSGL::image image){
     image.srcr.width = image.r.width; 
     image.srcr.length = image.r.length;
     image.pixmap = XCreatePixmap(RSGL::display,RSGL::window,image.r.width,image.r.length, DefaultDepth(RSGL::display, RSGL::screenNumber));
-    image.img = image.img.resize(image.r.length,image.r.width,1,3); //just incase the rect is changed
+    //image.img = image.img.resize((png::uint_32)image.r.length,(png::uint_32)image.r.width);
     for (int i=0;i < image.pixels.size(); i++){
       XPutPixel(image.image,image.cords[i][0],image.cords[i][1],(65536 * image.pixels[i][0]) + (256 * image.pixels[i][1]) + image.pixels[i][2]);            
     }
@@ -347,8 +350,7 @@ void Event::CheckEvents(){
   XEvent E;
   XNextEvent(RSGL::display, &E);
   type = E.type;
-  if (type == 33 && E.xclient.data.l[0] == XInternAtom(RSGL::display, "WM_DELETE_WINDOW", true)){RSGL::quit = 33;}
-  else{RSGL::quit = 0;} 
+  if (type == 33 && E.xclient.data.l[0] == XInternAtom(RSGL::display, "WM_DELETE_WINDOW", true)){} else{type == 0;} 
   if (type == 4 || type == 5){button = E.xbutton.button;}
   if (type == 4 || type == 5 || type == 6){x=E.xbutton.x;y=E.xbutton.y;}
   if (type == 2 || type == 3){XQueryKeymap(RSGL::display,RSGL::keyboard);}
@@ -362,9 +364,11 @@ void RSGL::GetError(){
 
 int RSGL::drawText(RSGL::text t){
     RSGL::text image = t;
-    if (image.srcr.width != image.r.width || image.srcr.length != image.r.length){
+    if (image.srcr.width != image.r.width || image.srcr.length != image.r.length || (image.c.r+image.c.g+image.c.b) != (image.sc.r+image.sc.g+image.sc.b) || image.text  != image.stext){
       image.srcr.width = image.r.width; 
       image.srcr.length = image.r.length;
+      image.stext = image.text;
+      image.sc = image.c;
       image.pixmap = XCreatePixmap(RSGL::display,RSGL::window,image.r.width,image.r.length, DefaultDepth(RSGL::display, RSGL::screenNumber));
       XImage* img = XGetImage(RSGL::display, image.pixmap, 0, 0 , image.r.length, image.r.width, AllPlanes, ZPixmap);
       image.img = image.img.resize(image.r.length,image.r.width,1,3); //just incase the rect is changed
