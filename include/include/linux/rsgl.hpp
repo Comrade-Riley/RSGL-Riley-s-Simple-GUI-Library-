@@ -83,14 +83,14 @@ namespace RSGL{
     struct color{int r,g,b;};
 
     struct image{
-      RSGL::rect r; 
+      RSGL::rect r;
+      RSGL::rect srcr = r; 
+      const char* file; 
       std::vector<std::vector<int>> cords;
-      std::vector<std::vector<int>> pixels;
       XImage* image;
       png::image< png::rgba_pixel> img;
       Pixmap pixmap;
       GC gc;
-      RSGL::rect srcr = r; 
       bool loaded = false;
     };
 
@@ -267,21 +267,23 @@ RSGL::text RSGL::loadText(const char* word, RSGL::rect r, const char* font, RSGL
     return {r,cords,pixels, img, image,pixmap,gc,r,c,c,word,word,true};
 }
 
-RSGL::image RSGL::loadImage(const char* file, RSGL::rect r){  
+
+
+RSGL::image RSGL::loadImage(const char* file, RSGL::rect r){
+  std::string command = "convert ";
+  command += file; command += " -resize " + std::to_string(r.width) + "x" +std::to_string(r.length) + " out.png"; 
+  system(command.data());a
+  png::image< png::rgba_pixel > image("out.png");
+  system("rm out.png");
   std::vector<std::vector<int>> cords;
-  std::vector<std::vector<int>> pixels;
-  png::image< png::rgba_pixel > image(file);
-  for (png::uint_16 h=0; h < image.get_height(); h++){
-    for (png::uint_16 w=0; w < image.get_width(); w++){
-        if(image[h][w].alpha > 0){
-          cords.insert(cords.end(),{(int)w,(int)h});
-          pixels.insert(pixels.end(),{(int)image[h][w].red, (int)image[h][w].green, (int)image[h][w].blue});
+  XImage* img = XGetImage(RSGL::display, RSGL::window, 0, 0 , r.length, r.width, AllPlanes, ZPixmap);
+  for (png::uint_16 y=0; y < image.get_height(); y++){
+    for (png::uint_16 x=0; x < image.get_width(); x++){
+        if(image[y][x].alpha >= 100){
+          cords.insert(cords.end(),{(int)x+r.x,(int)y+r.y});
+          XPutPixel(img,x,y,(65536 * image[y][x].red) + (256 * image[y][x].green) + image[y][x].blue);
         }
     }
-  }
-  XImage* img = XGetImage(RSGL::display, RSGL::window, 0, 0 , r.length, r.width, AllPlanes, ZPixmap);
-  for (int i=0;i < pixels.size(); i++){
-    XPutPixel(img,cords[i][0],cords[i][1],(65536 * pixels[i][0]) + (256 * pixels[i][1]) + pixels[i][2]);            
   }
   Pixmap pixmap = XCreatePixmap(RSGL::display,RSGL::window,r.width,r.length, DefaultDepth(RSGL::display, RSGL::screenNumber));
   unsigned long valuemask = GCForeground | GCBackground | GCGraphicsExposures;
@@ -291,20 +293,12 @@ RSGL::image RSGL::loadImage(const char* file, RSGL::rect r){
 	gcv.graphics_exposures = 0;
   GC gc = XCreateGC(RSGL::display, pixmap, valuemask,&gcv);
   XPutImage(RSGL::display, pixmap, gc, img, 0, 0, 0,0, r.width,r.length);
-  return {r,cords,pixels, img, image,pixmap,gc,true};
+  return {r,r,file, cords, img, image,pixmap,gc,true};
 }
 
 int RSGL::drawImage(RSGL::image image){
-  if (image.srcr.width != image.r.width || image.srcr.length != image.r.length){
-    image.srcr.width = image.r.width; 
-    image.srcr.length = image.r.length;
-    image.pixmap = XCreatePixmap(RSGL::display,RSGL::window,image.r.width,image.r.length, DefaultDepth(RSGL::display, RSGL::screenNumber));
-    //image.img = image.img.resize((png::uint_32)image.r.length,(png::uint_32)image.r.width);
-    for (int i=0;i < image.pixels.size(); i++){
-      XPutPixel(image.image,image.cords[i][0],image.cords[i][1],(65536 * image.pixels[i][0]) + (256 * image.pixels[i][1]) + image.pixels[i][2]);            
-    }
-    XPutImage(RSGL::display, image.pixmap, image.gc, image.image, 0, 0, 0,0, image.r.width,image.r.length);
-  }
+  if (image.srcr.width != image.r.width || image.srcr.length != image.r.length) image = RSGL::loadImage(image.file,image.r);
+
   XCopyArea(RSGL::display,image.pixmap,RSGL::window,image.gc,0,0,image.r.width,image.r.length,image.r.x,image.r.y);
   return 1;
 }
