@@ -272,7 +272,7 @@ RSGL::text RSGL::loadText(const char* word, RSGL::rect r, const char* font, RSGL
 RSGL::image RSGL::loadImage(const char* file, RSGL::rect r){
   std::string command = "convert ";
   command += file; command += " -resize " + std::to_string(r.width) + "x" +std::to_string(r.length) + " out.png"; 
-  system(command.data());a
+  system(command.data());
   png::image< png::rgba_pixel > image("out.png");
   system("rm out.png");
   std::vector<std::vector<int>> cords;
