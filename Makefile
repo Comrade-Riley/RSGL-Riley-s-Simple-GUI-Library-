@@ -1,4 +1,4 @@
-VERSION = main
+VERSION = development
 all:
 	@echo "make sure to set VERSION to your current VERSION with vi 'MakeFile'"
 	@echo ""
