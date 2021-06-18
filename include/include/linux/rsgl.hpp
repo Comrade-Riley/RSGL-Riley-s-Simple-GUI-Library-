@@ -142,36 +142,21 @@ namespace RSGL{
     int drawPoint(RSGL::point p, color c);
 
     
-    int drawRect(RSGL::rect r,color c, bool fill=true){
-      //creates gc
-      unsigned long valuemask = GCForeground | GCBackground | GCGraphicsExposures;
-	    XGCValues		gcv;
-      gcv.foreground = XWhitePixel(RSGL::display,RSGL::screenNumber);
-	    gcv.background = XBlackPixel(RSGL::display,RSGL::screenNumber);
-	    gcv.graphics_exposures = 0;
-      GC gc = XCreateGC(RSGL::display, RSGL::window, valuemask,&gcv);
-      
-      //Pixmap pixmap = XCreatePixmap(RSGL::display,RSGL::window,r.width,r.length, DefaultDepth(RSGL::display, RSGL::screenNumber));
-      XSetForeground(RSGL::display,gc,RSGLRGBTOHEX(c.r,c.g,c.b));
-      if (fill){XFillRectangle(RSGL::display,RSGL::window,gc,r.x,r.y,r.width,r.length);}
-      XDrawRectangle(RSGL::display,RSGL::window,gc,r.x,r.y,r.width,r.length);
+   int drawRect(RSGL::rect r,color c, bool fill=true){
+      Pixmap pixmap = XCreatePixmap(RSGL::display,RSGL::window,r.width,r.length, DefaultDepth(RSGL::display, RSGL::screenNumber));
+      XSetForeground(RSGL::display,RSGL::gc,RSGLRGBTOHEX(c.r,c.g,c.b));
+      if (fill){XFillRectangle(RSGL::display,RSGL::window,RSGL::gc,r.x,r.y,r.width,r.length);}
+      XDrawRectangle(RSGL::display,RSGL::window,RSGL::gc,r.x,r.y,r.width,r.length);
       return 1;
     }
 
     int drawCircle(RSGL::circle c, color col,bool fill=true){
-      //creates gc
-      unsigned long valuemask = GCForeground | GCBackground | GCGraphicsExposures;
-	    XGCValues		gcv;
-      gcv.foreground = XWhitePixel(RSGL::display,RSGL::screenNumber);
-	    gcv.background = XBlackPixel(RSGL::display,RSGL::screenNumber);
-	    gcv.graphics_exposures = 0;
-      GC gc = XCreateGC(RSGL::display, RSGL::window, valuemask,&gcv);
-      
-      XSetForeground(RSGL::display,gc,RSGLRGBTOHEX(col.r,col.g,col.b));
-      if (fill){XFillArc(RSGL::display,RSGL::window,gc, c.x-(30/2), c.y-(30/2), c.radius, c.radius, 0, 360*64);}
+      XSetForeground(RSGL::display,RSGL::gc,RSGLRGBTOHEX(col.r,col.g,col.b));
+      if (fill){XFillArc(RSGL::display,RSGL::window,RSGL::gc, c.x-(30/2), c.y-(30/2), c.radius, c.radius, 0, 360*64);}
       XDrawArc(RSGL::display, RSGL::window, gc, c.x-(30/2), c.y-(30/2), c.radius, c.radius, 0, 360*64);
       return 1;
     }
+
 };
 
 int RSGL::init(){
