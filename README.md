@@ -1,7 +1,5 @@
 # RSGL-Riley-s-Simple-GUI-Library-
-A simple GUI library currently only for Linux 
-
-(This library currently only supports linux)
+A simple GUI library currently only for Linux and Wii homebrew
 
 discord server: https://discord.gg/Azafz3n8
 
