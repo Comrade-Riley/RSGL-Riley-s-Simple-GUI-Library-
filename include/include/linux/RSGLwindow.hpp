@@ -20,8 +20,7 @@ struct RSGLWindow{
 
 RSGLWindow createWindow(std::string name,int x1, int y1,int w1, int h1, RSGL::color c){
     //extern XVisualInfo* vi = glXChooseVisual(RSGL::display, 0, 0);
-    RSGL::window = XCreateSimpleWindow(RSGL::display, RootWindow(RSGL::display, RSGL::screenNumber), x1, y1, w1, h1, 1,
-                                 BlackPixel(RSGL::display, RSGL::screenNumber),  RSGLRGBTOHEX(c.r,c.g,c.b));
+    RSGL::window = XCreateSimpleWindow(RSGL::display, RootWindow(RSGL::display, RSGL::screenNumber), x1, y1, w1, h1, 0,0,  RSGLRGBTOHEX(c.r,c.g,c.b));
     long event_mask = ExposureMask
                     | KeyPressMask
                     | KeyReleaseMask
@@ -43,6 +42,13 @@ RSGLWindow createWindow(std::string name,int x1, int y1,int w1, int h1, RSGL::co
     XSetWMProtocols(RSGL::display, RSGL::window, &wm_delete, 1);
     XGCValues values;
     RSGL::gc = DefaultGC(RSGL::display, 0);
+
+    #ifdef OPENGL
+    RSGL::sfc = cairo_xlib_surface_create(RSGL::display, RSGL::window,
+        DefaultVisual(RSGL::display,XDefaultScreen(RSGL::display)), w1, h1);
+    cairo_xlib_surface_set_size(RSGL::sfc, w1, h1);
+    RSGL::ctx = cairo_create(RSGL::sfc);
+    #endif
     
     return {RSGL::window,name,x1,x1,w1,w1,.color=c};
 }
