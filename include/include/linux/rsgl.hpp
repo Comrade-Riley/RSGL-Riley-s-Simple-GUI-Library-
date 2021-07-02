@@ -9,12 +9,27 @@
 #include "deps/CImg.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <cairo/cairo.h>
+#include <cairo/cairo-xlib.h>
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "deps/stb_image_write.h" 
 #include "deps/png++/image.hpp" 
 
 #define STB_TRUETYPE_IMPLEMENTATION 
 #include "deps/stb_truetype.h"
+
+
+#ifndef VULKAN
+    #ifndef OPENGL
+      #define OPENGL 1
+    #endif
+#endif
+
+#ifdef VULKAN
+    #ifdef OPENGL
+      #undef OPENGL
+    #endif
+#endif
 
 using namespace cimg_library;
 #define RSGLRGBTOHEX(r, g, b) ((r << 16) + (g << 8) + b)
@@ -25,6 +40,11 @@ namespace RSGL{
     char keyboard[32];
     Window window;
     int screenNumber;
+    #ifdef OPENGL
+      cairo_surface_t *sfc;
+      cairo_t *ctx;
+    #endif
+    
     int init();
 
     int Quit();
@@ -35,11 +55,12 @@ namespace RSGL{
 
     XEvent event;
     //page 189
-    int KeyPressed=2;
-    int KeyReleased=3;
-    int MouseButtonPressed=4;
-    int MouseButtonReleased=5;
-    int MousePosChanged=6;
+    const int KeyPressed=2;
+    const int KeyReleased=3;
+    const int MouseButtonPressed=4;
+    const int MouseButtonReleased=5;
+    const int MousePosChanged=6;
+    const int quit = 33;
     /*int EnterNotify=7;
     int LeaveNotify=8;
     int FocusIn=9;
@@ -54,13 +75,7 @@ namespace RSGL{
     int UnmapNotify=18;
     int MapNotify=19;
     icnt MapRequest=20;
-    /*
     int ReparentNotify=21;
-    */
-    int WindowConfigurationUpdated=22;
-    int WindowPosChanged;
-    int WindowSizeChanged;
-    /*
     int ConfigureRequest=23;
     int GravityNotify=24;
     int ResizeRequest=25;
@@ -71,16 +86,14 @@ namespace RSGL{
     int SelectionRequest=30;
     int SelectionNotify=31;
     int ColormapNotify=32;
-    */
-    int quit = 33;
-    /*int MappingNotify=34;
+    int MappingNotify=34;
     int GenericEvent=35;
     int LASTEvent=36;*/
 
     struct point{int x, y;};
     struct rect{int x, y; int length,width; };
     struct circle{int x, y; int radius;};
-    struct color{int r,g,b;};
+    struct color{int r,g,b; float a;};
 
     struct image{
       RSGL::rect r;
@@ -96,10 +109,7 @@ namespace RSGL{
 
     struct text{
       RSGL::rect r; 
-      std::vector<std::vector<int>> cords;
-      std::vector<std::vector<int>> pixels;
       XImage* image;
-      CImg<unsigned char> img;
       Pixmap pixmap;
       GC gc;
       RSGL::rect srcr = r; 
@@ -142,21 +152,39 @@ namespace RSGL{
     int drawPoint(RSGL::point p, color c);
 
     
-   int drawRect(RSGL::rect r,color c, bool fill=true){
-      Pixmap pixmap = XCreatePixmap(RSGL::display,RSGL::window,r.width,r.length, DefaultDepth(RSGL::display, RSGL::screenNumber));
-      XSetForeground(RSGL::display,RSGL::gc,RSGLRGBTOHEX(c.r,c.g,c.b));
-      if (fill){XFillRectangle(RSGL::display,RSGL::window,RSGL::gc,r.x,r.y,r.width,r.length);}
-      XDrawRectangle(RSGL::display,RSGL::window,RSGL::gc,r.x,r.y,r.width,r.length);
+    int drawRect(RSGL::rect r,color c, bool fill=True,int stroke=1, int lineColor = 0, RSGL::color lineCol = {}){
+      if (!lineColor) lineCol = c;
+      #ifdef OPENGL
+        cairo_set_source_rgba(RSGL::ctx, (double)lineCol.r,(double)lineCol.b,(double)lineCol.g,(double)lineCol.a);
+        cairo_rectangle(RSGL::ctx, (float)r.x,(float)r.y, (float)r.width,(float)r.length);
+        cairo_set_line_width(RSGL::ctx, stroke);
+        cairo_stroke(RSGL::ctx);
+        if (fill){
+          cairo_rectangle(RSGL::ctx, (float)r.x,(float)r.y, (float)r.width,(float)r.length);
+          cairo_set_source_rgba(RSGL::ctx, (double)c.r,(double)c.b,(double)c.g,(double)c.a);
+          cairo_fill(RSGL::ctx);
+        }
+      #endif
       return 1;
     }
 
-    int drawCircle(RSGL::circle c, color col,bool fill=true){
-      XSetForeground(RSGL::display,RSGL::gc,RSGLRGBTOHEX(col.r,col.g,col.b));
-      if (fill){XFillArc(RSGL::display,RSGL::window,RSGL::gc, c.x-(30/2), c.y-(30/2), c.radius, c.radius, 0, 360*64);}
-      XDrawArc(RSGL::display, RSGL::window, gc, c.x-(30/2), c.y-(30/2), c.radius, c.radius, 0, 360*64);
+    int drawCircle(RSGL::circle c, color col,bool fill=true,int stroke=1, int lineColor = 0, RSGL::color lineCol = {}){
+      if (!lineColor) lineCol = col;
+      #ifdef OPENGL
+        
+        cairo_set_source_rgba(RSGL::ctx, (double)lineCol.r,(double)lineCol.b,(double)lineCol.g,(double)lineCol.a);
+        cairo_arc(RSGL::ctx,c.x,c.y,c.radius,0,2 * M_PI);
+        cairo_set_line_width(RSGL::ctx, stroke);
+        cairo_stroke(RSGL::ctx);
+        if (fill){
+          cairo_set_source_rgba(RSGL::ctx, (double)col.r,(double)col.b,(double)col.g,(double)col.a);
+          cairo_arc(RSGL::ctx, c.x,c.y, c.radius,0, 2 * M_PI);
+          cairo_stroke_preserve(RSGL::ctx);
+          cairo_fill(RSGL::ctx);
+        }
+      #endif
       return 1;
     }
-
 };
 
 int RSGL::init(){
@@ -192,13 +220,10 @@ RSGL::text RSGL::loadText(const char* word, RSGL::rect r, const char* font, RSGL
 
     /* prepare font */
     stbtt_fontinfo info;
-    if (!stbtt_InitFont(&info, fontBuffer, 0))
-    {
-        printf("failed\n");
-    }
-    
-    int b_w = r.width*4; /* bitmap width */
-    int b_h = r.length*4; /* bitmap height */
+    if (!stbtt_InitFont(&info, fontBuffer, 0)) std::cout << "failed to load font\n";
+    r.width = sizeof(word)*15;
+    int b_w = r.width; /* bitmap width */;
+    int b_h = r.length; /* bitmap height */
     int l_h = r.length; /* line height */
 
     /* create a bitmap for the phrase */
@@ -211,15 +236,11 @@ RSGL::text RSGL::loadText(const char* word, RSGL::rect r, const char* font, RSGL
     int ascent, descent, lineGap;
     stbtt_GetFontVMetrics(&info, &ascent, &descent, &lineGap);
     
-    ascent = roundf(ascent * scale);
-    descent = roundf(descent * scale);
+    ascent = roundf(ascent * scale); descent = roundf(descent * scale);
     
-    int i;
-    for (i = 0; i < strlen(word); ++i)
-    {
+    for (int i = 0; i < strlen(word); ++i){
         /* how wide is this character */
-        int ax;
-		int lsb;
+        int ax; int lsb;
         stbtt_GetCodepointHMetrics(&info, word[i], &ax, &lsb);
 
         /* get bounding box for character (may be offset to account for chars that dip above or below the line */
@@ -228,7 +249,10 @@ RSGL::text RSGL::loadText(const char* word, RSGL::rect r, const char* font, RSGL
         
         /* compute y (different characters have different heights */
         int y = ascent + c_y1;
-        //imagebitmap + byteOffset, c_x2 - c_x1, c_y2 - c_y1, b_w, scale, scale, word[i]);
+        
+        /* render character (stride and offset is important here) */
+        int byteOffset = x + roundf(lsb * scale) + (y * b_w);
+        stbtt_MakeCodepointBitmap(&info, bitmap + byteOffset, c_x2 - c_x1, c_y2 - c_y1, b_w, scale, scale, word[i]);
 
         /* advance x */
         x += roundf(ax * scale);
@@ -238,34 +262,17 @@ RSGL::text RSGL::loadText(const char* word, RSGL::rect r, const char* font, RSGL
         kern = stbtt_GetCodepointKernAdvance(&info, word[i], word[i + 1]);
         x += roundf(kern * scale);
     }
-    stbi_write_png("out.text", b_w, b_h, 1, bitmap, b_w);
-    std::vector<std::vector<int>> cords;
-    std::vector<std::vector<int>> pixels;
-    CImg<unsigned char> image("out.text"), visu(500,400,1,3,0);
-    remove("out.text");
-    image = image.resize(r.length,r.width,1,3);
-    for (int h=0; h < image.height(); h++){
-      for (int w=0; w < image.width(); w++){
-        if ((int)image(w,h,0,0)+(int)image(w,h,0,1)+(int)image(w,h,0,2) > 0){
-          cords.insert(cords.end(),{w,h});
-          pixels.insert(pixels.end(),{(int)image(w,h,0,0), (int)image(w,h,0,1), (int)image(w,h,0,2)});
-        }
-      }
-    }
     unsigned long valuemask = GCForeground | GCBackground | GCGraphicsExposures;
 	  XGCValues		gcv;
     gcv.foreground = XWhitePixel(RSGL::display,RSGL::screenNumber);
 	  gcv.background = XBlackPixel(RSGL::display,RSGL::screenNumber);
 	  gcv.graphics_exposures = 0;
-    Pixmap pixmap = XCreatePixmap(RSGL::display,RSGL::window,r.width,r.length, DefaultDepth(RSGL::display, RSGL::screenNumber));
+    Pixmap pixmap = XCreatePixmap(RSGL::display,RSGL::window,sizeof(word)*5, b_h, DefaultDepth(RSGL::display, RSGL::screenNumber));
     GC gc = XCreateGC(RSGL::display, pixmap,valuemask,&gcv);
-    XImage* img = XGetImage(RSGL::display, RSGL::window, 0, 0 , r.length, r.width, AllPlanes, ZPixmap);
-    for (int i=0;i < cords.size(); i++){
-      XPutPixel(img,cords[i][0],cords[i][1],(65536 * c.r) + (256 * c.g) + c.b);           
-    }
-    XPutImage(RSGL::display, pixmap, gc, img, 0, 0, 0, 0, r.width, r.length);
-    
-    return {r,cords,pixels, img, image,pixmap,gc,r,c,c,word,word,true};
+    XImage* img = XGetImage(RSGL::display, RSGL::window, 0, 0 , b_w, b_h, AllPlanes, ZPixmap);    
+    memcpy(img->data, bitmap,b_h*b_w); free(bitmap);
+    XPutImage(RSGL::display, pixmap, gc, img, 0, 0, 0, 0, sizeof(word)*5, b_h);
+    return {r,img,pixmap,gc,r,c,c,word,word,true};
 }
 
 
@@ -278,7 +285,7 @@ RSGL::image RSGL::loadImage(const char* file, RSGL::rect r){
   system("rm out.png");
   std::vector<std::vector<int>> cords;
   XImage* img = XGetImage(RSGL::display, RSGL::window, 0, 0 , r.length, r.width, AllPlanes, ZPixmap);
-  
+  char* data;
   for (png::uint_16 y=0; y < image.get_height(); y++){
     for (png::uint_16 x=0; x < image.get_width(); x++){
         if(image[y][x].alpha >= 100){
@@ -289,13 +296,14 @@ RSGL::image RSGL::loadImage(const char* file, RSGL::rect r){
   }
   
   Pixmap pixmap = XCreatePixmap(RSGL::display,RSGL::window,r.width,r.length, DefaultDepth(RSGL::display, RSGL::screenNumber));
+  //Pixmap pixmap2 = XCreateBitmapFromData(RSGL::display,RSGL::)
   unsigned long valuemask = GCForeground | GCBackground | GCGraphicsExposures;
 	XGCValues		gcv;
   gcv.foreground = XWhitePixel(RSGL::display,RSGL::screenNumber);
 	gcv.background = XBlackPixel(RSGL::display,RSGL::screenNumber);
 	gcv.graphics_exposures = 0;
   GC gc = XCreateGC(RSGL::display, pixmap, valuemask,&gcv);
-  //XPutImage(RSGL::display, pixmap, gc, img, 0, 0, 0,0, r.width,r.length);
+  XPutImage(RSGL::display, pixmap, gc, img, 0, 0, 0,0, r.width,r.length);
   return {r,r,file, cords, img, image,pixmap,gc,true};
 }
 
@@ -308,15 +316,24 @@ int RSGL::drawImage(RSGL::image image){
 
 int RSGL::Quit(){
     if (!RSGL::initPass){return 0;}
+    cairo_surface_destroy(RSGL::sfc);
+    cairo_destroy(RSGL::ctx);
     if (!XCloseDisplay(display)){return 0;}
     return 1;
 }
 
 
 int RSGL::clear(RSGL::rect r){
-  if (!RSGL::initPass){return 0;}
-  if (r.x+r.y+r.length+r.width == 0){XClearWindow(RSGL::display,RSGL::window); return 1;}
-  XClearArea(RSGL::display, RSGL::window, r.x, r.y, r.width, r.length, false);
+  #ifdef OPENGL
+    cairo_push_group(RSGL::ctx);
+    cairo_set_source_rgb(RSGL::ctx,1,1,1);
+    cairo_paint(RSGL::ctx);
+    cairo_set_source_rgb(RSGL::ctx,255,255,255);
+
+    cairo_pop_group_to_source(RSGL::ctx);
+    cairo_paint(RSGL::ctx);
+    cairo_surface_flush(RSGL::sfc);
+  #endif
   return 1;
 }
 
@@ -329,8 +346,11 @@ bool RSGL::isPressed(unsigned long key) {
 
 
 int RSGL::drawPoint(RSGL::point p, color c){
-  XSetForeground(RSGL::display,RSGL::gc,RSGLRGBTOHEX(c.r,c.g,c.b));
-  XDrawPoint(RSGL::display,RSGL::window,RSGL::gc,p.x,p.y);
+  #ifdef OPENGL
+      cairo_set_source_rgba(RSGL::ctx, (double)c.r,(double)c.b,(double)c.g,(double)c.a);
+      cairo_rectangle(RSGL::ctx, (float)p.x,(float)p.y, 1,1);
+      cairo_fill_preserve(RSGL::ctx);
+  #endif
   return 1;
 }
 
@@ -343,9 +363,9 @@ struct Event{
 };
 
 void Event::CheckEvents(){
-  XEvent E;
-  XNextEvent(RSGL::display, &E);
-  type = E.type;
+  XNextEvent(RSGL::display, &RSGL::event);
+  XEvent E = RSGL::event;
+  type = RSGL::event.type;
   if (type == 33 && E.xclient.data.l[0] == XInternAtom(RSGL::display, "WM_DELETE_WINDOW", true)){} else{type == 0;} 
   if (type == 4 || type == 5){button = E.xbutton.button;}
   if (type == 4 || type == 5 || type == 6){x=E.xbutton.x;y=E.xbutton.y;}
@@ -361,17 +381,7 @@ void RSGL::GetError(){
 int RSGL::drawText(RSGL::text t){
     RSGL::text image = t;
     if (image.srcr.width != image.r.width || image.srcr.length != image.r.length || (image.c.r+image.c.g+image.c.b) != (image.sc.r+image.sc.g+image.sc.b) || image.text  != image.stext){
-      image.srcr.width = image.r.width; 
-      image.srcr.length = image.r.length;
-      image.stext = image.text;
-      image.sc = image.c;
-      image.pixmap = XCreatePixmap(RSGL::display,RSGL::window,image.r.width,image.r.length, DefaultDepth(RSGL::display, RSGL::screenNumber));
-      XImage* img = XGetImage(RSGL::display, image.pixmap, 0, 0 , image.r.length, image.r.width, AllPlanes, ZPixmap);
-      image.img = image.img.resize(image.r.length,image.r.width,1,3); //just incase the rect is changed
-      for (int i=0;i < image.pixels.size(); i++){
-        XPutPixel(image.image,image.cords[i][0],image.cords[i][1],(65536 * t.c.r) + (256 * t.c.g) + t.c.b);           
-      }
-      XPutImage(RSGL::display, image.pixmap, t.gc, image.image, 0, 0, 0, 0, image.r.width, image.r.length);
+
     }
     XCopyArea(RSGL::display,image.pixmap,RSGL::window,t.gc,0,0,image.r.width,image.r.length,image.r.x,image.r.y);
     return 1;
