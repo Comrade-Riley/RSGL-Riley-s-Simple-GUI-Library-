@@ -1,23 +1,18 @@
 #pragma once
-#include <X11/Xlib.h>
 #include <iostream>
-#include <math.h>
-#include <X11/keysym.h>
-#include <cstring>
-#include <SDL2/SDL_mixer.h>
 #include <vector>
+#include <map>
+#include "deps/X11/Xlib.h"
+#include "deps/X11/Xatom.h"
+#include "deps/X11/cursorfont.h"
+#include "deps/SDL2_mixer/SDL_mixer.h"
 #include "deps/CImg.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <cairo/cairo.h>
-#include <cairo/cairo-xlib.h>
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "deps/stb_image_write.h" 
 #include "deps/png++/image.hpp" 
-
+ 
 #define STB_TRUETYPE_IMPLEMENTATION 
 #include "deps/stb_truetype.h"
-
 
 #ifndef VULKAN
     #ifndef OPENGL
@@ -29,6 +24,12 @@
     #ifdef OPENGL
       #undef OPENGL
     #endif
+#endif
+
+#ifdef OPENGL
+  #define CAIRO_HAS_PNG_FUNCTIONS 1
+  #include "deps/cairo/cairo.h"
+  #include "deps/cairo/cairo-xlib.h"
 #endif
 
 using namespace cimg_library;
@@ -54,41 +55,12 @@ namespace RSGL{
     bool initPass = false;
 
     XEvent event;
-    //page 189
     const int KeyPressed=2;
     const int KeyReleased=3;
     const int MouseButtonPressed=4;
     const int MouseButtonReleased=5;
     const int MousePosChanged=6;
     const int quit = 33;
-    /*int EnterNotify=7;
-    int LeaveNotify=8;
-    int FocusIn=9;
-    int FocusOut=10;
-    int KeymapNotify=11;
-    int Expose=12;
-    int GraphicsExpose=13;
-    int NoExpose=14;
-    int VisibilityNotify=15;
-    int CreateNotify=16;
-    int DestroyNotify=17;
-    int UnmapNotify=18;
-    int MapNotify=19;
-    icnt MapRequest=20;
-    int ReparentNotify=21;
-    int ConfigureRequest=23;
-    int GravityNotify=24;
-    int ResizeRequest=25;
-    int CirculateNotify=26;
-    int CirculateRequest=27;
-    int PropertyNotify=28;
-    int SelectionClear=29;
-    int SelectionRequest=30;
-    int SelectionNotify=31;
-    int ColormapNotify=32;
-    int MappingNotify=34;
-    int GenericEvent=35;
-    int LASTEvent=36;*/
 
     struct point{int x, y;};
     struct rect{int x, y; int length,width; };
@@ -134,15 +106,21 @@ namespace RSGL{
     int ImageCollideImage(RSGL::image img, RSGL::image img2);
     
     
-    struct music{Mix_Music* loaded; bool isLoaded=false;};
+    struct music{Mix_Music* loaded; bool isLoaded=false; int channel;};
 
-    music loadMusic(const char* file){return {Mix_LoadMUS(file),true};}
+    music loadMusic(std::string file){return {Mix_LoadMUS(file.data()),true};}
 
     image loadImage(const char* file, RSGL::rect r);
 
     int drawImage(RSGL::image image);
 
     int playMusic(RSGL::music m,int loop);
+    void pauseMusic();
+    void resumeMusic();
+    void stopMusic();
+
+    bool isPlaying(RSGL::music m);
+
 
     text loadText(const char* word, RSGL::rect r, const char* font, RSGL::color c);
 
@@ -152,40 +130,58 @@ namespace RSGL{
     int drawPoint(RSGL::point p, color c);
 
     
-    int drawRect(RSGL::rect r,color c, bool fill=True,int stroke=1, int lineColor = 0, RSGL::color lineCol = {}){
-      if (!lineColor) lineCol = c;
-      #ifdef OPENGL
-        cairo_set_source_rgba(RSGL::ctx, (double)lineCol.r,(double)lineCol.b,(double)lineCol.g,(double)lineCol.a);
-        cairo_rectangle(RSGL::ctx, (float)r.x,(float)r.y, (float)r.width,(float)r.length);
-        cairo_set_line_width(RSGL::ctx, stroke);
-        cairo_stroke(RSGL::ctx);
-        if (fill){
-          cairo_rectangle(RSGL::ctx, (float)r.x,(float)r.y, (float)r.width,(float)r.length);
-          cairo_set_source_rgba(RSGL::ctx, (double)c.r,(double)c.b,(double)c.g,(double)c.a);
-          cairo_fill(RSGL::ctx);
-        }
-      #endif
-      return 1;
-    }
+    int drawRect(RSGL::rect r,color c, bool fill=True,int stroke=1, int lineColor = 0, RSGL::color lineCol = {});
 
-    int drawCircle(RSGL::circle c, color col,bool fill=true,int stroke=1, int lineColor = 0, RSGL::color lineCol = {}){
-      if (!lineColor) lineCol = col;
-      #ifdef OPENGL
-        
-        cairo_set_source_rgba(RSGL::ctx, (double)lineCol.r,(double)lineCol.b,(double)lineCol.g,(double)lineCol.a);
-        cairo_arc(RSGL::ctx,c.x,c.y,c.radius,0,2 * M_PI);
-        cairo_set_line_width(RSGL::ctx, stroke);
-        cairo_stroke(RSGL::ctx);
-        if (fill){
-          cairo_set_source_rgba(RSGL::ctx, (double)col.r,(double)col.b,(double)col.g,(double)col.a);
-          cairo_arc(RSGL::ctx, c.x,c.y, c.radius,0, 2 * M_PI);
-          cairo_stroke_preserve(RSGL::ctx);
-          cairo_fill(RSGL::ctx);
-        }
-      #endif
-      return 1;
-    }
+    int drawCircle(RSGL::circle c, color col,bool fill=true,int stroke=1, int lineColor = 0, RSGL::color lineCol = {});
+
+
+    struct rectButton{
+      RSGL::rect r;
+      RSGL::color c;
+      RSGL::text t;
+      void draw(){RSGL::drawRect(r,c); if (t.pixmap) RSGL::drawText(t);}
+      bool isClicked(){return RSGL::event.type == RSGL::MouseButtonReleased && RSGL::RectCollidePoint(r,{RSGL::event.xbutton.x,RSGL::event.xbutton.y});}
+      bool isHovered(){return RSGL::RectCollidePoint(r,{RSGL::event.xbutton.x,RSGL::event.xbutton.y});}
+      bool isPressed(){return RSGL::event.type == RSGL::MouseButtonPressed && RSGL::RectCollidePoint(r,{RSGL::event.xbutton.x,RSGL::event.xbutton.y});}
+    };
+
+    struct circleButton{
+      RSGL::circle c;
+      RSGL::color col;
+      RSGL::text t;
+      void draw(){RSGL::drawCircle(c,col); if (t.pixmap) RSGL::drawText(t);}
+      bool isClicked(){return RSGL::event.type == RSGL::MouseButtonReleased && RSGL::CircleCollidePoint(c,{RSGL::event.xbutton.x,RSGL::event.xbutton.y});}
+      bool isHovered(){return RSGL::CircleCollidePoint(c,{RSGL::event.xbutton.x,RSGL::event.xbutton.y});}
+      bool isPressed(){return RSGL::event.type == RSGL::MouseButtonPressed && RSGL::CircleCollidePoint(c,{RSGL::event.xbutton.x,RSGL::event.xbutton.y});}
+    };
+
+    struct imgButton{
+      RSGL::image img;
+      RSGL::text t;
+      void draw(){RSGL::drawImage(img); if (t.pixmap) RSGL::drawText(t); }
+      bool isClicked(){return RSGL::event.type == RSGL::MouseButtonReleased && ImageCollidePoint(img,{RSGL::event.xbutton.x,RSGL::event.xbutton.y});}
+      bool isHovered(){return RSGL::ImageCollidePoint(img,{RSGL::event.xbutton.x,RSGL::event.xbutton.y});}
+      bool isPressed(){return RSGL::event.type == RSGL::MouseButtonPressed && ImageCollidePoint(img,{RSGL::event.xbutton.x,RSGL::event.xbutton.y});}
+    };
 };
+
+
+void RSGL::circleSliderThingy::draw(){
+    if (cb.isPressed()){ if (pos == 1) pos=2; else pos=1; }  
+    cb.draw();
+    if (pos == 1){ 
+      cb.c = c; cb.col = dotColorPos1;
+      RSGL::drawCircle(c,sliderColorPos1);
+      RSGL::drawCircle({c.x+(c.radius/2),c.y,c.radius},sliderColorPos1);
+      RSGL::drawCircle({c.x+(c.radius/2)*2,c.y,c.radius},sliderColorPos1);
+    }
+    else{ 
+      cb.c = {c.x*3,c.y,c.radius}; cb.col = dotColorPos2;
+      RSGL::drawCircle(c,sliderColorPos2);
+      RSGL::drawCircle({c.x+(c.radius/2),c.y,c.radius},sliderColorPos2);
+      RSGL::drawCircle({c.x+(c.radius/2)*2,c.y,c.radius},sliderColorPos2);
+    }
+}
 
 int RSGL::init(){
     RSGL::initPass = true;
@@ -196,12 +192,18 @@ int RSGL::init(){
     return 1;
 }
 
+
 int RSGL::playMusic(RSGL::music m,int loop){
   if (!initPass){return 0;}
-  if(Mix_PlayMusic(m.loaded, loop) == -1){return 0;}
+  if(Mix_PlayMusic(m.loaded, loop) == -1) return 0;
   return 1;
 }
 
+void RSGL::pauseMusic(){Mix_PauseMusic();}
+void RSGL::resumeMusic(){Mix_ResumeMusic();}
+void RSGL::stopMusic(){Mix_HaltMusic();}
+
+bool RSGL::isPlaying(RSGL::music m){return Mix_PlayingMusic(); }
 
 RSGL::text RSGL::loadText(const char* word, RSGL::rect r, const char* font, RSGL::color c){
     /* load font file */
@@ -228,6 +230,8 @@ RSGL::text RSGL::loadText(const char* word, RSGL::rect r, const char* font, RSGL
 
     /* create a bitmap for the phrase */
     unsigned char* bitmap = (unsigned char*)calloc(b_w * b_h, sizeof(unsigned char));
+    memset(bitmap,0,b_w * b_h);
+    
     /* calculate font scaling */
     float scale = stbtt_ScaleForPixelHeight(&info, l_h);
     
@@ -271,21 +275,22 @@ RSGL::text RSGL::loadText(const char* word, RSGL::rect r, const char* font, RSGL
     GC gc = XCreateGC(RSGL::display, pixmap,valuemask,&gcv);
     XImage* img = XGetImage(RSGL::display, RSGL::window, 0, 0 , b_w, b_h, AllPlanes, ZPixmap);    
     memcpy(img->data, bitmap,b_h*b_w); free(bitmap);
+    
     XPutImage(RSGL::display, pixmap, gc, img, 0, 0, 0, 0, sizeof(word)*5, b_h);
     return {r,img,pixmap,gc,r,c,c,word,word,true};
 }
-
-
 
 RSGL::image RSGL::loadImage(const char* file, RSGL::rect r){
   std::string command = "convert ";
   command += file; command += " -resize " + std::to_string(r.width) + "x" +std::to_string(r.length) + " out.png"; 
   system(command.data());
+  
   png::image< png::rgba_pixel > image("out.png");
   system("rm out.png");
   std::vector<std::vector<int>> cords;
   XImage* img = XGetImage(RSGL::display, RSGL::window, 0, 0 , r.length, r.width, AllPlanes, ZPixmap);
   char* data;
+  
   for (png::uint_16 y=0; y < image.get_height(); y++){
     for (png::uint_16 x=0; x < image.get_width(); x++){
         if(image[y][x].alpha >= 100){
@@ -325,12 +330,12 @@ int RSGL::Quit(){
 
 int RSGL::clear(RSGL::rect r){
   #ifdef OPENGL
-    cairo_push_group(RSGL::ctx);
+    //cairo_push_group(RSGL::ctx);
     cairo_set_source_rgb(RSGL::ctx,1,1,1);
     cairo_paint(RSGL::ctx);
     cairo_set_source_rgb(RSGL::ctx,255,255,255);
 
-    cairo_pop_group_to_source(RSGL::ctx);
+    //cairo_pop_group_to_source(RSGL::ctx);
     cairo_paint(RSGL::ctx);
     cairo_surface_flush(RSGL::sfc);
   #endif
@@ -343,6 +348,41 @@ bool RSGL::isPressed(unsigned long key) {
     return isPressed;
 }
 
+
+int RSGL::drawRect(RSGL::rect r,color c, bool fill,int stroke, int lineColor, RSGL::color lineCol){
+      if (!lineColor) lineCol = c;
+      #ifdef OPENGL
+        cairo_set_source_rgba(RSGL::ctx, (double)lineCol.r,(double)lineCol.b,(double)lineCol.g,(double)lineCol.a);
+        cairo_rectangle(RSGL::ctx, (float)r.x,(float)r.y, (float)r.width,(float)r.length);
+        cairo_set_line_width(RSGL::ctx, stroke);
+        cairo_stroke(RSGL::ctx);
+        if (fill){
+          cairo_rectangle(RSGL::ctx, (float)r.x,(float)r.y, (float)r.width,(float)r.length);
+          cairo_set_source_rgba(RSGL::ctx, (double)c.r,(double)c.b,(double)c.g,(double)c.a);
+          cairo_fill(RSGL::ctx);
+        }
+      #endif
+      return 1;
+}
+
+int RSGL::drawCircle(RSGL::circle c, color col,bool fill,int stroke, int lineColor, RSGL::color lineCol){
+  if (!lineColor) lineCol = col;
+    #ifdef OPENGL    
+    cairo_set_source_rgba(RSGL::ctx, (double)lineCol.r,(double)lineCol.g,(double)lineCol.b,(double)lineCol.a);
+    cairo_arc(RSGL::ctx,c.x,c.y,c.radius,0,2 * M_PI);
+    cairo_set_line_width(RSGL::ctx, stroke);
+    cairo_stroke(RSGL::ctx);
+    if (fill){
+      cairo_set_source_rgba(RSGL::ctx, (double)col.r,(double)col.g,(double)col.b,(double)col.a);
+      cairo_arc(RSGL::ctx, c.x,c.y, c.radius,0, 2 * M_PI);
+      cairo_stroke_preserve(RSGL::ctx);
+      cairo_set_source_rgba(RSGL::ctx, (double)col.r,(double)col.g,(double)col.b,(double)col.a);
+      cairo_fill(RSGL::ctx);
+      cairo_set_source_rgba(RSGL::ctx, (double)col.r,(double)col.g,(double)col.b,(double)col.a);
+    }
+  #endif
+  return 1;
+}
 
 
 int RSGL::drawPoint(RSGL::point p, color c){
