@@ -2,10 +2,10 @@
 #include <iostream>
 #include <vector>
 #include <map>
-#include "deps/X11/Xlib.h"
-#include "deps/X11/Xatom.h"
-#include "deps/X11/cursorfont.h"
-#include "deps/SDL2_mixer/SDL_mixer.h"
+#include <X11/Xlib.h>
+#include <X11/Xatom.h>
+#include <X11/cursorfont.h>
+#include <SDL2_mixer/SDL_mixer.h>
 #include "deps/CImg.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "deps/stb_image_write.h" 
