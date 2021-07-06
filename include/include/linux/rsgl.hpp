@@ -28,8 +28,8 @@
 
 #ifdef OPENGL
   #define CAIRO_HAS_PNG_FUNCTIONS 1
-  #include "deps/cairo/cairo.h"
-  #include "deps/cairo/cairo-xlib.h"
+  #include <cairo/cairo.h>
+  #include <cairo/cairo-xlib.h>
 #endif
 
 using namespace cimg_library;
