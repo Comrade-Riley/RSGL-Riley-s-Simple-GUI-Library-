@@ -165,22 +165,38 @@ namespace RSGL{
     };
 };
 
+void RSGL::notifiy(std::string title, std::string content ,std::string image){
+  std::string com = "notify-send \"" + title +"\" \"" + content + "\" ";
+  if (image != "")  com += "-i \"" + image + "\"";
+  popen(com.data(),"r");
+}
 
-void RSGL::circleSliderThingy::draw(){
-    if (cb.isPressed()){ if (pos == 1) pos=2; else pos=1; }  
-    cb.draw();
-    if (pos == 1){ 
-      cb.c = c; cb.col = dotColorPos1;
-      RSGL::drawCircle(c,sliderColorPos1);
-      RSGL::drawCircle({c.x+(c.radius/2),c.y,c.radius},sliderColorPos1);
-      RSGL::drawCircle({c.x+(c.radius/2)*2,c.y,c.radius},sliderColorPos1);
+void RSGL::messageBox(std::string message,bool question,bool error){
+  std::string com = "zenity ";
+  if (question) com+="--question "; else if (error) com+= "error"; else com+="--warning ";
+  com += "--text \"" + message + "\"";
+  std::cout << com.data();
+  popen(com.data(),"r");
+}
+
+std::vector<std::string> RSGL::fileDialog(std::string title,bool multiple,bool save, bool directory){
+  char filename[1024];
+  std::string com="zenity --file-selection --title=\""+title+"\"";
+  if (multiple) com += " --multiple --separator=\" \"";
+  if (directory) com += " --directory";
+  if (save) com += " --save";
+  FILE *f = popen(com.data(), "r");
+  fgets(filename, 1024, f);
+  std::string fn(filename);
+  if (multiple){
+    std::vector<std::string> output;
+    std::string file;
+    for (int i=0; i < fn.size(); i++){
+      if (fn[i] == ' '){ output.insert(output.end(),file); file="";}
+      else file+=fn[i];
     }
-    else{ 
-      cb.c = {c.x*3,c.y,c.radius}; cb.col = dotColorPos2;
-      RSGL::drawCircle(c,sliderColorPos2);
-      RSGL::drawCircle({c.x+(c.radius/2),c.y,c.radius},sliderColorPos2);
-      RSGL::drawCircle({c.x+(c.radius/2)*2,c.y,c.radius},sliderColorPos2);
-    }
+  }
+  return {fn};
 }
 
 int RSGL::init(){
