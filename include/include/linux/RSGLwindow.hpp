@@ -1,5 +1,4 @@
 #pragma once
-#include <iostream>
 #include "rsgl.hpp"
 
 struct RSGLWindow{
@@ -33,14 +32,18 @@ RSGLWindow createWindow(std::string name,int x1, int y1,int w1, int h1, RSGL::co
                     | ExposureMask;
     XSelectInput(RSGL::display, RSGL::window, event_mask);
     XMapWindow(RSGL::display, RSGL::window);
-    if (!RSGL::window){
-        return {};
-    }
+    if (!RSGL::window) return {};
     XStoreName(RSGL::display, RSGL::window, name.data());
     XNextEvent(RSGL::display, &RSGL::event);
     Atom wm_delete = XInternAtom(RSGL::display, "WM_DELETE_WINDOW", true);
     XSetWMProtocols(RSGL::display, RSGL::window, &wm_delete, 1);
     XGCValues values;
+    
+    Atom xdndAtom = XInternAtom( RSGL::display, "XdndAware", False );
+    char xdndVersion = 5;
+    XChangeProperty( RSGL::display, RSGL::window, xdndAtom, XA_ATOM, 32,
+            PropModeReplace, (unsigned char *)&xdndVersion, 1 );
+    
     RSGL::gc = DefaultGC(RSGL::display, 0);
 
     #ifdef OPENGL
@@ -49,6 +52,6 @@ RSGLWindow createWindow(std::string name,int x1, int y1,int w1, int h1, RSGL::co
     cairo_xlib_surface_set_size(RSGL::sfc, w1, h1);
     RSGL::ctx = cairo_create(RSGL::sfc);
     #endif
-    
+
     return {RSGL::window,name,x1,x1,w1,w1,.color=c};
 }
