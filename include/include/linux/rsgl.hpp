@@ -61,6 +61,7 @@ namespace RSGL{
     const int MouseButtonReleased=5;
     const int MousePosChanged=6;
     const int quit = 33;
+    const int dnd = 34;
 
     struct point{int x, y;};
     struct rect{int x, y; int length,width; };
@@ -106,9 +107,9 @@ namespace RSGL{
     int ImageCollideImage(RSGL::image img, RSGL::image img2);
     
     
-    struct music{Mix_Music* loaded; bool isLoaded=false; int channel;};
+    struct music{Mix_Music* loaded; bool isLoaded=false;std::string title;};
 
-    music loadMusic(std::string file){return {Mix_LoadMUS(file.data()),true};}
+    music loadMusic(std::string file){return {Mix_LoadMUS(file.data()),true,file};}
 
     image loadImage(const char* file, RSGL::rect r);
 
@@ -163,7 +164,25 @@ namespace RSGL{
       bool isHovered(){return RSGL::ImageCollidePoint(img,{RSGL::event.xbutton.x,RSGL::event.xbutton.y});}
       bool isPressed(){return RSGL::event.type == RSGL::MouseButtonPressed && ImageCollidePoint(img,{RSGL::event.xbutton.x,RSGL::event.xbutton.y});}
     };
+    
+    struct circleSliderThingy{
+      RSGL::circle c;
+      RSGL::color dotColorPos1;
+      RSGL::color sliderColorPos1;
+      RSGL::color dotColorPos2;
+      RSGL::color sliderColorPos2;
+      RSGL::circleButton cb = {c};
+      int pos = 1; 
+      void draw(); 
+    };
+
+
+    std::vector<std::string> fileDialog(std::string title,bool multiple=false,bool save=false, bool directory=false);
+    void notifiy(std::string title, std::string content,std::string image="");
+    void messageBox(std::string message, bool question=false,bool error=false);
 };
+
+
 
 void RSGL::notifiy(std::string title, std::string content ,std::string image){
   std::string com = "notify-send \"" + title +"\" \"" + content + "\" ";
@@ -197,6 +216,25 @@ std::vector<std::string> RSGL::fileDialog(std::string title,bool multiple,bool s
     }
   }
   return {fn};
+}
+
+
+
+void RSGL::circleSliderThingy::draw(){
+    if (cb.isPressed()){ if (pos == 1) pos=2; else pos=1; }  
+    cb.draw();
+    if (pos == 1){ 
+      cb.c = c; cb.col = dotColorPos1;
+      RSGL::drawCircle(c,sliderColorPos1);
+      RSGL::drawCircle({c.x+(c.radius/2),c.y,c.radius},sliderColorPos1);
+      RSGL::drawCircle({c.x+(c.radius/2)*2,c.y,c.radius},sliderColorPos1);
+    }
+    else{ 
+      cb.c = {c.x*3,c.y,c.radius}; cb.col = dotColorPos2;
+      RSGL::drawCircle(c,sliderColorPos2);
+      RSGL::drawCircle({c.x+(c.radius/2),c.y,c.radius},sliderColorPos2);
+      RSGL::drawCircle({c.x+(c.radius/2)*2,c.y,c.radius},sliderColorPos2);
+    }
 }
 
 int RSGL::init(){
@@ -422,7 +460,8 @@ void Event::CheckEvents(){
   XNextEvent(RSGL::display, &RSGL::event);
   XEvent E = RSGL::event;
   type = RSGL::event.type;
-  if (type == 33 && E.xclient.data.l[0] == XInternAtom(RSGL::display, "WM_DELETE_WINDOW", true)){} else{type == 0;} 
+  if (type == 33 && E.xclient.data.l[0] == XInternAtom(RSGL::display, "WM_DELETE_WINDOW", true)){} 
+  else if (type == 33 && E.xclient.message_type == XInternAtom(RSGL::display, "XdndDrop", false)){type=34;}  else{type = 0;} 
   if (type == 4 || type == 5){button = E.xbutton.button;}
   if (type == 4 || type == 5 || type == 6){x=E.xbutton.x;y=E.xbutton.y;}
   if (type == 2 || type == 3){XQueryKeymap(RSGL::display,RSGL::keyboard);}
