@@ -1,22 +1,8 @@
 #pragma once
 #include <X11/Xlib.h>
-#include <iostream>
+#include <cstdio>
 #include <math.h>
 #include <X11/keysym.h>
-#include <cstring>
-#include <SDL2/SDL_mixer.h>
-#include <vector>
-#include "deps/CImg.h"
-#include <stdio.h>
-#include <stdlib.h>
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#include "deps/stb_image_write.h" 
-#include "deps/png++/image.hpp" 
-
-#define STB_TRUETYPE_IMPLEMENTATION 
-#include "deps/stb_truetype.h"
-
-using namespace cimg_library;
 #define RSGLRGBTOHEX(r, g, b) ((r << 16) + (g << 8) + b)
 
 namespace RSGL{
@@ -31,14 +17,11 @@ namespace RSGL{
     #endif
     
     int init();
-
     int Quit();
-
-    void GetError();
-
-    bool initPass = false;
+    int clear(); //clears everything and redraws things defined below it
 
     XEvent event;
+<<<<<<< HEAD
     const int KeyPressed=2;
     const int KeyReleased=3;
     const int MouseButtonPressed=4;
@@ -110,10 +93,58 @@ namespace RSGL{
     text loadText(const char* word, RSGL::rect r, const char* font, RSGL::color c);
 
     int drawText(RSGL::text);
+=======
+    //page 189
+    int KeyPressed=2;
+    int KeyReleased=3;
+    int MouseButtonPressed=4;
+    int MouseButtonReleased=5;
+    int MousePosChanged=6;
+    /*int EnterNotify=7;
+    int LeaveNotify=8;
+    int FocusIn=9;
+    int FocusOut=10;
+    int KeymapNotify=11;
+    int Expose=12;
+    int GraphicsExpose=13;
+    int NoExpose=14;
+    int VisibilityNotify=15;
+    int CreateNotify=16;
+    int DestroyNotify=17;
+    int UnmapNotify=18;
+    int MapNotify=19;
+    icnt MapRequest=20;
+    /*
+    int ReparentNotify=21;
+    */
+    int WindowConfigurationUpdated=22;
+    /*
+    int ConfigureRequest=23;
+    int GravityNotify=24;
+    int ResizeRequest=25;
+    int CirculateNotify=26;
+    int CirculateRequest=27;
+    int PropertyNotify=28;
+    int SelectionClear=29;
+    int SelectionRequest=30;
+    int SelectionNotify=31;
+    int ColormapNotify=32;
+    */
+    int quit;
+    /*int MappingNotify=34;
+    int GenericEvent=35;
+    int LASTEvent=36;*/
+
+    struct point{int x, y;};
+    struct rect{int length,width; int x, y;};
+    struct circle{int radius; int x, y;};
+    struct color{int r,g,b;};
+>>>>>>> parent of d9c7c03 (Update rsgl.hpp)
     
     bool isPressed(unsigned long key);
     int drawPoint(RSGL::point p, color c);
 
+<<<<<<< HEAD
     
     int drawRect(RSGL::rect r,color c, bool fill=True,int stroke=1, int lineColor = 0, RSGL::color lineCol = {});
 
@@ -197,11 +228,23 @@ std::vector<std::string> RSGL::fileDialog(std::string title,bool multiple,bool s
     for (int i=0; i < fn.size(); i++){
       if (fn[i] == ' '){ output.insert(output.end(),file); file="";}
       else file+=fn[i];
+=======
+    int drawRect(RSGL::rect r,color c, bool fill=True){
+      for (int l=0; l < r.length+1; l++){
+        for (int w=0; w < r.width+1; w++){
+          if (fill || w==0 || w == r.width || l==0 || l == r.length){
+            RSGL::drawPoint({l+r.x,w+r.y},c);
+          }
+        }
+      }
+      return 1;
+>>>>>>> parent of d9c7c03 (Update rsgl.hpp)
     }
   }
   return {fn};
 }
 
+<<<<<<< HEAD
 
 
 void RSGL::circleSliderThingy::draw(){
@@ -212,6 +255,37 @@ void RSGL::circleSliderThingy::draw(){
       RSGL::drawCircle(c,sliderColorPos1);
       RSGL::drawCircle({c.x+(c.radius/2),c.y,c.radius},sliderColorPos1);
       RSGL::drawCircle({c.x+(c.radius/2)*2,c.y,c.radius},sliderColorPos1);
+=======
+    int drawCircle(RSGL::circle c, color col,bool fill=True){
+      if (fill){
+        for (int y=-c.radius; y < (c.radius-1); y++){
+          for (int x=-c.radius; x < (c.radius-1); x++){
+            if ((x * x) + (y * y) <= (c.radius * c.radius)){
+              RSGL::drawPoint({c.x + x,c.y + y},col);
+            }
+          }
+        }
+      }
+      else {
+        int x, y;
+        int l;
+
+        for (x = 0; x <= (c.radius-1); x++) {
+          y = (int) sqrt ((double) (c.radius * c.radius) - (x * x));
+
+          RSGL::drawPoint({c.x+x, c.y+y},col);
+          RSGL::drawPoint({c.x+x, c.y+-y},col);
+          RSGL::drawPoint({c.x+-x,c.y+ y},col);
+          RSGL::drawPoint({c.x+-x,c.y+ -y},col);
+
+          RSGL::drawPoint({c.x+y, c.y+x},col);
+          RSGL::drawPoint({c.x+y, c.y+-x},col);
+          RSGL::drawPoint({c.x+-y,c.y+ x},col);
+          RSGL::drawPoint({c.x+-y,c.y+ -x},col);
+        }
+      }
+      return 1;
+>>>>>>> parent of d9c7c03 (Update rsgl.hpp)
     }
     else{ 
       cb.c = {c.x*3,c.y,c.radius}; cb.col = dotColorPos2;
@@ -222,11 +296,10 @@ void RSGL::circleSliderThingy::draw(){
 }
 
 int RSGL::init(){
-    RSGL::initPass = true;
     display = XOpenDisplay(NULL);
-    Mix_OpenAudio(44100,MIX_DEFAULT_FORMAT,1,2048);
-    if (display == NULL){return 0;}
+    if (display == NULL){return -1;}
     screenNumber = DefaultScreen(display);
+<<<<<<< HEAD
     return 1;
 }
 
@@ -377,8 +450,22 @@ int RSGL::clear(RSGL::rect r){
     cairo_paint(RSGL::ctx);
     cairo_surface_flush(RSGL::sfc);
   #endif
+=======
+    return 0;
+}
+
+int RSGL::Quit(){
+    if (!XCloseDisplay(display)){return -1;}
+    return 0;
+}
+
+
+int RSGL::clear(){
+  XClearWindow(display,RSGL::window);
+>>>>>>> parent of d9c7c03 (Update rsgl.hpp)
   return 1;
 }
+
 
 bool RSGL::isPressed(unsigned long key) {
     KeyCode kc2 = XKeysymToKeycode(RSGL::display, key);
@@ -386,6 +473,7 @@ bool RSGL::isPressed(unsigned long key) {
     return isPressed;
 }
 
+<<<<<<< HEAD
 
 int RSGL::drawRect(RSGL::rect r,color c, bool fill,int stroke, int lineColor, RSGL::color lineCol){
       if (!lineColor) lineCol = c;
@@ -423,6 +511,8 @@ int RSGL::drawCircle(RSGL::circle c, color col,bool fill,int stroke, int lineCol
 }
 
 
+=======
+>>>>>>> parent of d9c7c03 (Update rsgl.hpp)
 int RSGL::drawPoint(RSGL::point p, color c){
   #ifdef OPENGL
       cairo_set_source_rgba(RSGL::ctx, (double)c.r,(double)c.b,(double)c.g,(double)c.a);
@@ -430,6 +520,7 @@ int RSGL::drawPoint(RSGL::point p, color c){
       cairo_fill_preserve(RSGL::ctx);
   #endif
   return 1;
+  XSetForeground(RSGL::display,RSGL::gc,0x000000);
 }
 
 
@@ -441,6 +532,7 @@ struct Event{
 };
 
 void Event::CheckEvents(){
+<<<<<<< HEAD
   XNextEvent(RSGL::display, &RSGL::event);
   XEvent E = RSGL::event;
   type = RSGL::event.type;
@@ -465,3 +557,14 @@ int RSGL::drawText(RSGL::text t){
     XCopyArea(RSGL::display,image.pixmap,RSGL::window,t.gc,0,0,image.r.width,image.r.length,image.r.x,image.r.y);
     return 1;
 }
+=======
+  XEvent E;
+  XNextEvent(RSGL::display, &E);
+  type = E.type;
+  if (type == 33 && E.xclient.data.l[0] == XInternAtom(RSGL::display, "WM_DELETE_WINDOW", True)){RSGL::quit = 33;}
+  if (type == 4 || type == 5){button = E.xbutton.button;}
+  if (type == 4 || type == 5 || type == 6){x=E.xbutton.x;y=E.xbutton.y;}
+  if (type == 2 || type == 3){XQueryKeymap(RSGL::display,RSGL::keyboard);}
+  else{RSGL::quit == 0;} 
+}
+>>>>>>> parent of d9c7c03 (Update rsgl.hpp)
