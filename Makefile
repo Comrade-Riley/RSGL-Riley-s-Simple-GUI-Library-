@@ -16,13 +16,23 @@ install:
 	@make build
 	@sudo cp libRSGL.so /usr/lib/libRSGL.so
 	@rm libRSGL.so
+	@sudo cp -r ./ /usr/include/RSGL
 
 all:
 	build
 	install
+
+uninstall:
+	rm /usr/lib/libRSGL.so
+
+update:
+	rm /usr/lib/libRSGL.so
+	@make install
 
 help:
 	@echo "make help : runs this help tab"
 	@echo "make : runs both build and install"
 	@echo "make build : builds libRSGL.so in the local dir"
 	@echo "make install : installs the build into /usr/lib, then removes in, runs buld if it's not already build"
+	@echo "make update : update preexisting RSGL"
+	@echo "make uninstall : uninstall RSGL"
