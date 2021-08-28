@@ -111,7 +111,7 @@ SOFTWARE.
  *     in the repo git://anongit.freedesktop.org/xorg/proto/x11proto.git
  *
  */
-
+#pragma once
 #define RK_VoidSymbol                  0xffffff  /* Void symbol */
 
 #ifdef XK_MISCELLANY

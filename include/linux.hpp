@@ -1,6 +1,7 @@
-#include <X11/Xlib.h>
-
-#include "include/linux/RSGLwindow.hpp"
-#include "include/linux/rsgl.hpp"
+#ifdef RSGLMUSIC
+#define RSGLNAMESPACEEXTENTION
+#include "include/linux/music.hpp"
+#else
+    #include "include/linux/rsgl.hpp"
+#endif
 #include "include/linux/keys.hpp"
-#include "include/linux/collision.hpp"
