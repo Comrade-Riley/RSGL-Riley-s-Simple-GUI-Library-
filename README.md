@@ -3,7 +3,7 @@ A simple GUI library currently only for Linux
 
 (This library currently only supports linux)
 
-discord server: https://discord.gg/Azafz3n8
+discord server: https://discord.gg/ckC7mqdjCb
 
 # Linux
   how to install?:
