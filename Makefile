@@ -9,9 +9,9 @@ GXX = g++
 
 
 build:
-	@$(GXX) -c $(ARGS) $(LIBS) $(SOURCE) -c -o rsgl.o
-	@$(GXX) -shared  rsgl.o $(LIBS) -o libRSGL.so
-	rm rsgl.o;	
+	@$(GXX) -c $(ARGS) $(SOURCE) -c -o rsgl.o
+	@$(GXX) -shared rsgl.o $(LIBS) -o libRSGL.so
+	@rm rsgl.o;	
 
 install:
 	@make build
