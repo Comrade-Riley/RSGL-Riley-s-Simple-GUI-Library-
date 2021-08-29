@@ -1,9 +1,10 @@
 ARGS = -Wall -fPIC -O -g
 OS = linux
-SOURCEDIR = source/$(OS)/
-SOURCE = $(SOURCEDIR)rsgl.cpp
+SOURCEDIR = source/$(OS)
+SOURCE = $(SOURCEDIR)/rsgl.cpp
 LIBDIR = $(SOURCEDIR)/deps
 LIBS = $(LIBDIR)/libX11.so.6.4.0 $(LIBDIR)/libpng16.so.16.37.0 $(LIBDIR)/libcairo.so.2.11704.0
+
 GXX = g++
 
 

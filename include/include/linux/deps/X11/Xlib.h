@@ -41,11 +41,11 @@ in this Software without prior written authorization from The Open Group.
 #include <stdint.h>
 #endif
 
-#include <X11/X.h>
+#include "X.h"
 
 /* applications should not depend on these two headers being included! */
-#include <X11/Xfuncproto.h>
-#include <X11/Xosdefs.h>
+#include "Xfuncproto.h"
+#include "Xosdefs.h"
 
 #ifndef X_WCHAR
 #include <stddef.h>

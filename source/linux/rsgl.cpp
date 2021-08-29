@@ -1,4 +1,3 @@
-#include <SFML/Audio.hpp>
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "../../include/include/linux/deps/stb_image_write.h" 
 #define STB_TRUETYPE_IMPLEMENTATION 

@@ -31,7 +31,7 @@
 #ifndef PNGPP_TYPES_HPP_INCLUDED
 #define PNGPP_TYPES_HPP_INCLUDED
 
-#include <png.h>
+#include "libpng16/png.h"
 
 namespace png
 {
