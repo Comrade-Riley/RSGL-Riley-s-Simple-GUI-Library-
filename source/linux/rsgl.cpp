@@ -316,11 +316,11 @@ RSGL::window::window(std::string wname,RSGL::rect winrect, RSGL::color c, bool r
     /*if (!resize){
         XSizeHints* sizeHints = XAllocSizeHints();
         sizeHints->flags = PMinSize | PMaxSize | USPosition;
-        sizeHints->min_width = sizeHints->max_width = r.width;
-        sizeHints->min_height = sizeHints->max_height = r.length;
+        sizeHints->min_width =  r.width; sizeHints->max_width = r.width;
+        sizeHints->min_height =  r.width; sizeHints->max_height = r.length;
         sizeHints->x = r.x;
         sizeHints->y = r.y;
-        XSetWMNormalHints(win.display,w, sizeHints);
+        XSetWMNormalHints(display,d, sizeHints);
         XFree(sizeHints);
     }*/
     name = wname; r = winrect; color = c;
