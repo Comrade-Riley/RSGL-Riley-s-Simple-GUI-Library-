@@ -109,7 +109,6 @@ namespace RSGL{
         RSGL::pixmap dbuffer; //double buffer
         Event event;
 
-        Display* display;
         int setColor(RSGL::color c);
         window(){}
         window(std::string,RSGL::rect, RSGL::color, bool resize = false);

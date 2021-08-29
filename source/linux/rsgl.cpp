@@ -33,7 +33,7 @@ std::vector<std::string> RSGL::fileDialog(std::string title,bool multiple,bool s
   if (multiple){
     std::vector<std::string> output;
     std::string file;
-    for (int i=0; i < fn.size(); i++){
+    for (int i=0; i < (int)fn.size(); i++){
       if (fn[i] == ' '){ output.insert(output.end(),file); file="";}
       else file+=fn[i];
     }
@@ -44,8 +44,6 @@ std::vector<std::string> RSGL::fileDialog(std::string title,bool multiple,bool s
 
 
 RSGL::text RSGL::loadText(std::string word, RSGL::rect r, std::string font, RSGL::color c,RSGL::drawable win){
-    Display* display;
-    
     /* load font file */
     int size;
     unsigned char* fontBuffer;
@@ -83,7 +81,7 @@ RSGL::text RSGL::loadText(std::string word, RSGL::rect r, std::string font, RSGL
     
     ascent = roundf(ascent * scale); descent = roundf(descent * scale);
     
-    for (int i = 0; i < word.size(); ++i){
+    for (int i = 0; i < (int)word.size(); ++i){
         /* how wide is this character */
         int ax; int lsb;
         stbtt_GetCodepointHMetrics(&info, word[i], &ax, &lsb);
@@ -107,7 +105,7 @@ RSGL::text RSGL::loadText(std::string word, RSGL::rect r, std::string font, RSGL
         kern = stbtt_GetCodepointKernAdvance(&info, word[i], word[i + 1]);
         x += roundf(kern * scale);
     }
-    int len;    
+    //int len;    
     std::ifstream stream;
 
     png::image< png::rgba_pixel > image(stream);
@@ -117,17 +115,17 @@ RSGL::text RSGL::loadText(std::string word, RSGL::rect r, std::string font, RSGL
     unsigned long valuemask = GCForeground | GCBackground | GCGraphicsExposures;
 	  XGCValues		gcv;
     int screenNumber = XDefaultScreen(win.display);
-    gcv.foreground = XWhitePixel(display,screenNumber);
-	  gcv.background = XBlackPixel(display,screenNumber);
+    gcv.foreground = XWhitePixel(win.display,screenNumber);
+	  gcv.background = XBlackPixel(win.display,screenNumber);
 	  gcv.graphics_exposures = 0;
-    Pixmap pixmap = XCreatePixmap(display,win.d,sizeof(word)*5, b_h, DefaultDepth(win.display, screenNumber));
-    GC gc = XCreateGC(display, pixmap,valuemask,&gcv);
-    XImage* img = XGetImage(display, win.d, 0, 0 , b_w, b_h, AllPlanes, ZPixmap);    
+    Pixmap pixmap = XCreatePixmap(win.display,win.d,sizeof(word)*5, b_h, DefaultDepth(win.display, screenNumber));
+    GC gc = XCreateGC(win.display, pixmap,valuemask,&gcv);
+    XImage* img = XGetImage(win.display, win.d, 0, 0 , b_w, b_h, AllPlanes, ZPixmap);    
     memcpy(img->data, bitmap,b_h*b_w); free(bitmap);
     for (int y=0; y < b_h; y++){
       for (int x=0; x < b_w; x++) std::cout << img->data[x*y] << std::endl;
     }
-    XPutImage(display, pixmap, gc, img, 0, 0, 0, 0, sizeof(word)*5, b_h);
+    XPutImage(win.display, pixmap, gc, img, 0, 0, 0, 0, sizeof(word)*5, b_h);
     return {r,img,pixmap,gc,r,c,c,word,word,true};
 }
 
@@ -140,7 +138,7 @@ RSGL::image RSGL::loadImage(const char* file, RSGL::rect r,RSGL::drawable win){
   system("rm out.png");
   std::vector<std::vector<int>> cords;
   XImage* img = XGetImage(win.display, root.d, 0, 0 , r.length, r.width, AllPlanes, ZPixmap);
-  char* data;
+  //char* data;
   
   for (png::uint_16 y=0; y < image.get_height(); y++){
     for (png::uint_16 x=0; x < image.get_width(); x++){
@@ -241,7 +239,7 @@ void RSGL::window::CheckEvents(){
   XEvent E;
   XNextEvent(display, &E);
   event.type = E.type;
-  if (event.type == 33 && E.xclient.data.l[0] == XInternAtom(display, "WM_DELETE_WINDOW", true)){} 
+  if (event.type == 33 && E.xclient.data.l[0] == (long int)XInternAtom(display, "WM_DELETE_WINDOW", true)){} 
   else if (event.type == 33 && E.xclient.message_type == XInternAtom(display, "XdndDrop", false)){event.type=34;}  else if (event.type==33){event.type = 0;} 
   if (event.type == 4 || event.type == 5){event.button = E.xbutton.button;}
   if (event.type == 4 || event.type == 5 || event.type == 6){event.x=E.xbutton.x;event.y=E.xbutton.y;}
@@ -266,7 +264,7 @@ int RSGL::drawText(RSGL::text t,RSGL::drawable win){
 
 RSGL::pixmap::pixmap(RSGL::drawable dr, RSGL::area a){
   display = dr.display;
-  d = XCreatePixmap(display,dr.d,a.width,a.length,XDefaultDepth(display,XDefaultScreen(display)));
+  d = XCreatePixmap(dr.display,dr.d,a.width,a.length,XDefaultDepth(dr.display,XDefaultScreen(display)));
 }
 
 int RSGL::window::setColor(RSGL::color c){
@@ -298,7 +296,7 @@ RSGL::window::window(std::string wname,RSGL::rect winrect, RSGL::color c, bool r
     XNextEvent(display, &E);
     Atom wm_delete = XInternAtom(display, "WM_DELETE_WINDOW", true);
     XSetWMProtocols(display, d, &wm_delete, 1);
-    XGCValues values;
+    //XGCValues values;
     
     Atom xdndAtom = XInternAtom( display, "XdndAware", False );
     char xdndVersion = 5;
@@ -323,9 +321,9 @@ RSGL::window::window(std::string wname,RSGL::rect winrect, RSGL::color c, bool r
         XFree(sizeHints);
     }*/
     name = wname; r = winrect; color = c;
-    if (&RSGL::root == nullptr) root.name = wname; root.r = winrect; root.color = c; root.d = d;
-
     dbuffer.d = XCreatePixmap(display,d,winrect.width,winrect.length,XDefaultDepth(display,XDefaultScreen(display)));
+    if (!RSGL::root.d){root.dbuffer=dbuffer; root.name = wname; root.r = winrect; root.color = c; root.d = d; root.display=display;}
+
 }
 
 int RSGL::CircleCollide(RSGL::circle cir,RSGL::circle cir2){
@@ -370,7 +368,7 @@ int RSGL::RectCollideRect(RSGL::rect r, RSGL::rect r2){
 }
 
 int RSGL::ImageCollideRect(RSGL::image img, RSGL::rect r){
-    for (int i=0; i < img.cords.size(); i++){
+    for (int i=0; i < (int)img.cords.size(); i++){
         if(RSGL::RectCollidePoint(r, {img.cords[i][0],img.cords[i][1]})){
             return 1;
         }
@@ -378,7 +376,7 @@ int RSGL::ImageCollideRect(RSGL::image img, RSGL::rect r){
 }
 
 int RSGL::ImageCollideCircle(RSGL::image img, RSGL::circle c){
-    for (int i=0; i < img.cords.size(); i++){
+    for (int i=0; i < (int)img.cords.size(); i++){
         if(RSGL::CircleCollidePoint(c, {img.cords[i][0],img.cords[i][1]})){
             return 1;
         }
@@ -386,7 +384,7 @@ int RSGL::ImageCollideCircle(RSGL::image img, RSGL::circle c){
 }
 
 int RSGL::ImageCollidePoint(RSGL::image img, RSGL::point p){
-    for (int i=0; i < img.cords.size(); i++){
+    for (int i=0; i < (int)img.cords.size(); i++){
         if(RSGL::PointCollide(p, {img.cords[i][0],img.cords[i][1]})){
             return 1;
         }
@@ -394,8 +392,8 @@ int RSGL::ImageCollidePoint(RSGL::image img, RSGL::point p){
 }
 
 int RSGL::ImageCollideImage(RSGL::image img, RSGL::image img2){
-    for (int i=0; i < img.cords.size(); i++){
-        for (int j=0; j < img2.cords.size(); j++)
+    for (int i=0; i < (int)img.cords.size(); i++){
+        for (int j=0; j < (int)img2.cords.size(); j++)
             if(RSGL::PointCollide({img2.cords[i][0],img2.cords[i][1]}, {img.cords[i][0],img.cords[i][1]})){
                 return 1;
             }
