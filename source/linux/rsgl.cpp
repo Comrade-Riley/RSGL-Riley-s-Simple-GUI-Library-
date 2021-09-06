@@ -189,7 +189,7 @@ bool RSGL::window::isPressed(unsigned long key) {
 }
 
 
-int RSGL::drawRect(RSGL::rect r,color c, bool fill,int stroke, int lineColor, RSGL::color lineCol,RSGL::drawable win){
+void RSGL::drawRect(RSGL::rect r,color c, bool fill,int stroke, int lineColor, RSGL::color lineCol,RSGL::drawable win){
       if (!lineColor) lineCol = c;
       #ifdef OPENGL
         cairo_set_source_rgba(RSGL::ctx, (double)lineCol.r,(double)lineCol.g,(double)lineCol.b,(double)lineCol.a);
@@ -201,8 +201,11 @@ int RSGL::drawRect(RSGL::rect r,color c, bool fill,int stroke, int lineColor, RS
           cairo_set_source_rgba(RSGL::ctx, (double)c.r,(double)c.g,(double)c.b,(double)c.a);
           cairo_fill(RSGL::ctx); 
         }
+      #else
+        XSetForeground(win.display,XDefaultGC(win.display,XDefaultScreen(win.display)),
+          RSGLRGBTOHEX(c.r,c.g,c.b));
+        XFillRectangle(win.display,win.d,XDefaultGC(win.display,XDefaultScreen(win.display)),r.x,r.y,r.width,r.length);
       #endif
-      return 1;
 }
 
 int RSGL::drawCircle(RSGL::circle c, color col,bool fill,int stroke, int lineColor, RSGL::color lineCol,RSGL::drawable win){
@@ -250,6 +253,9 @@ void RSGL::window::close(){
   XCloseDisplay(display);
 }
 
+void RSGL::window::clear(){
+  XClearWindow(display,d);
+}
 
 
 int RSGL::drawText(RSGL::text t,RSGL::drawable win){
@@ -261,10 +267,18 @@ int RSGL::drawText(RSGL::text t,RSGL::drawable win){
     return 1;
 }
 
+void RSGL::drawable::loadArea(RSGL::drawable& dsrc, RSGL::rect r, RSGL::point p){
+  XCopyArea(display,dsrc.d,d,XDefaultGC(display,XDefaultScreen(display)),
+    r.x,r.y,r.width,r.length,p.x,p.x);
+}
+
 
 RSGL::pixmap::pixmap(RSGL::drawable dr, RSGL::area a){
   display = dr.display;
-  d = XCreatePixmap(dr.display,dr.d,a.width,a.length,XDefaultDepth(dr.display,XDefaultScreen(display)));
+  d = XCreatePixmap(display,dr.d,a.width,a.length,XDefaultDepth(display,XDefaultScreen(display)));
+  data = XGetImage(display,dr.d,0,0,a.width,a.length,0,2);
+  XPutImage(display,d,XDefaultGC(display,XDefaultScreen(display)),
+    data,0,0,0,0,r.width,r.length);
 }
 
 int RSGL::window::setColor(RSGL::color c){
@@ -286,7 +300,7 @@ RSGL::window::window(std::string wname,RSGL::rect winrect, RSGL::color c, bool r
                 | FocusChangeMask
                 | PointerMotionMask
                 | SubstructureNotifyMask
-                | StructureNotifyMask
+                | StructureNotifyMask 
                 | ExposureMask;
     XSelectInput(display, d, event_mask);
     XMapWindow(display, d);
@@ -302,6 +316,9 @@ RSGL::window::window(std::string wname,RSGL::rect winrect, RSGL::color c, bool r
     char xdndVersion = 5;
     XChangeProperty( display, d, xdndAtom, XA_ATOM, 32,
         PropModeReplace, (unsigned char *)&xdndVersion, 1 );
+
+    XLockDisplay(display);
+    XUnlockDisplay(display); 
 
     #ifdef OPENGL
     RSGL::sfc = cairo_xlib_surface_create(display, d,
@@ -399,3 +416,6 @@ int RSGL::ImageCollideImage(RSGL::image img, RSGL::image img2){
             }
     }return 0;      
 }
+
+
+

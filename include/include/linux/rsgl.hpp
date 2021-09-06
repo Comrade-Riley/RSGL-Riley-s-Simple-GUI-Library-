@@ -9,13 +9,6 @@
 #include "deps/png++/image.hpp"                     
 
 
-#ifndef VULKAN
-    #ifndef OPENGL
-      #ifndef RSX11
-        #define OPENGL 1
-      #endif
-    #endif
-#endif
 
 #ifdef VULKAN
     #ifdef OPENGL
@@ -50,6 +43,9 @@ namespace RSGL{
     struct area{int width,length;};
     struct color{int r,g,b; float a=1.0;};
 
+    int value(RSGL::rect r){return r.x+r.y+r.width+r.length;};
+    int value(RSGL::circle c){return c.x+c.y+c.radius;};
+
     struct image{
       RSGL::rect r;
       RSGL::rect srcr = r; 
@@ -82,17 +78,20 @@ namespace RSGL{
           int button;
           int x,y;
         };
-        char keyboard[32];
       public:
         RSGL::rect r;
         Display* display;
         Event event;
         Drawable d;
+
+        void loadArea(drawable& dsrc, RSGL::rect r, RSGL::point p);
     };
 
     struct pixmap : drawable{
         pixmap(){}
         pixmap(RSGL::drawable dr,RSGL::area a);
+        private:
+          XImage* data;
     };
 
     struct window : drawable{
@@ -115,6 +114,7 @@ namespace RSGL{
         void CheckEvents();
         bool isPressed(unsigned long key);
         void close();
+        void clear();
     };
     
     window root;
@@ -144,7 +144,7 @@ namespace RSGL{
     int drawPoint(RSGL::point p, color c,RSGL::drawable win=root);
 
     
-    int drawRect(RSGL::rect r,color c, bool fill=True,int stroke=1, int lineColor = 0, RSGL::color lineCol = {}, RSGL::drawable win=root);
+    void drawRect(RSGL::rect r,color c, bool fill=True,int stroke=1, int lineColor = 0, RSGL::color lineCol = {}, RSGL::drawable win=root);
 
     int drawCircle(RSGL::circle c, color col,bool fill=true,int stroke=1, int lineColor = 0, RSGL::color lineCol = {},RSGL::drawable win=root);
 
@@ -184,6 +184,7 @@ namespace RSGL{
     std::vector<std::string> fileDialog(std::string title,bool multiple=false,bool save=false, bool directory=false);
     void notifiy(std::string title, std::string content,std::string image="");
     void messageBox(std::string message, bool question=false,bool error=false);
+
 #ifndef RSGLNAMESPACEEXTENTION
 };
 #endif
